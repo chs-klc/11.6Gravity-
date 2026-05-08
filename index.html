@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S2 Virtual Science Lab – Free Fall</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f9ff;
+            user-select: none;
+        }
+        /* Bilingual: zh-text */
+        .zh-text { display: none !important; font-size: 0.85em; color: #64748b; font-weight: normal; margin-left: 4px; }
+        body.show-zh .zh-text            { display: inline !important; }
+        body.show-zh .zh-text.block      { display: block  !important; margin-left: 0; }
+        /* Free Fall canvas */
+        #ff-canvas-container { width: 100%; height: 500px; position: relative; overflow: hidden; border-radius: 0.5rem; }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col p-4 md:p-8">
+
+    <!-- ═══  HEADER  ═══ -->
+    <header class="mb-4 flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200 gap-4">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-100 p-2 rounded-lg text-blue-600"><i class="fas fa-rocket text-xl"></i></div>
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">S2 Virtual Science Lab <span class="zh-text text-lg">中二虛擬科學實驗室</span></h1>
+                <p class="text-xs text-slate-500">Form 2 Science: Free Fall &amp; Motion</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="toggleLanguage()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg text-sm font-bold border border-indigo-200 transition"><i class="fas fa-language mr-1"></i> 中/Eng</button>
+            <button onclick="window.location.reload()" class="bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-700 px-3 py-2 rounded-lg transition border border-slate-200"><i class="fas fa-sync-alt"></i></button>
+        </div>
+    </header>
+
+    <!-- ═══  MAIN  ═══ -->
+    <main class="flex-1">
+        <div class="bg-white rounded-xl shadow-lg p-6 border-t-4 border-blue-500">
+            <div class="mb-4">
+                <h2 class="text-2xl font-bold text-blue-800">
+                    <i class="fas fa-vr-cardboard mr-2"></i>
+                    3D Virtual Lab: Motion Sensor Experiment <span class="zh-text">3D虛擬實驗室：運動傳感器實驗</span>
+                </h2>
+                <p class="text-gray-600 mt-2">Observe how gravity accelerates the volleyball and creates a curve on the distance-time graph. <span class="zh-text block">觀察重力如何使排球加速，並在距離-時間關係圖上形成曲線。</span></p>
+            </div>
+            <div class="flex flex-col md:flex-row gap-6 mb-6">
+                <!-- 3D Canvas -->
+                <div class="w-full md:w-1/2 relative bg-slate-800 rounded-lg overflow-hidden border-2 border-slate-700 shadow-inner" style="height:500px;">
+                    <div id="ff-canvas-container" class="absolute inset-0"></div>
+                    <div class="absolute top-4 left-1/2 transform -translate-x-1/2 text-white bg-black bg-opacity-60 px-4 py-2 rounded-lg text-sm pointer-events-none font-semibold">Motion Sensor <span class="zh-text">運動傳感器</span></div>
+                    <div class="absolute top-20 right-4 text-white bg-black bg-opacity-60 px-3 py-2 rounded-lg text-xs pointer-events-none flex flex-col items-center">
+                        <i class="fas fa-arrow-down mb-1 text-red-400 text-lg"></i>
+                        <span class="font-bold">Gravity <span class="zh-text">重力</span></span>
+                    </div>
+                </div>
+                <!-- 2D Graph -->
+                <div class="w-full md:w-1/2 relative bg-white rounded-lg overflow-hidden border-2 border-gray-200 shadow-inner" style="height:500px;">
+                    <div class="absolute top-4 w-full text-center font-bold text-gray-800 z-10 text-lg">
+                        <i class="fas fa-display mr-2 text-blue-500"></i>Computer Screen: Distance-Time Graph <span class="zh-text">電腦屏幕：距離-時間關係圖</span>
+                    </div>
+                    <div class="absolute left-4 top-1/2 transform -translate-y-1/2 -rotate-90 origin-left text-sm font-bold text-gray-600">Distance (m) <span class="zh-text">距離 (m)</span></div>
+                    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-sm font-bold text-gray-600">Time (s) <span class="zh-text">時間 (s)</span></div>
+                    <canvas id="ff-graph2d" class="absolute inset-0 w-full h-full p-10"></canvas>
+                </div>
+            </div>
+            <!-- Controls -->
+            <div class="flex flex-wrap justify-center gap-4 py-4 bg-gray-50 rounded-lg border">
+                <button onclick="labSim.holdBall()" class="px-8 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg shadow-md transition transform hover:-translate-y-0.5 flex items-center text-lg">
+                    <i class="fas fa-hand mr-2"></i>Hold Ball <span class="zh-text ml-1">拿著球</span>
+                </button>
+                <button onclick="labSim.releaseBall()" class="px-8 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-md transition transform hover:-translate-y-0.5 flex items-center text-lg">
+                    <i class="fas fa-play mr-2"></i>Release <span class="zh-text ml-1">釋放</span>
+                </button>
+                <button onclick="labSim.resetAll()" class="px-8 py-3 bg-gray-500 hover:bg-gray-600 text-white font-bold rounded-lg shadow-md transition transform hover:-translate-y-0.5 flex items-center text-lg">
+                    <i class="fas fa-rotate-right mr-2"></i>Clear Data <span class="zh-text ml-1">清除數據</span>
+                </button>
+            </div>
+            <!-- Analysis trigger -->
+            <div id="analysis-trigger" class="hidden mt-4 flex justify-center">
+                <button onclick="labSim.showAnalysis()" class="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-md transition transform hover:-translate-y-0.5 flex items-center text-lg animate-bounce">
+                    <i class="fas fa-table mr-2"></i>Show Speed Analysis <span class="zh-text ml-1">顯示速度分析</span>
+                </button>
+            </div>
+            <!-- Analysis panel -->
+            <div id="analysis-panel" class="hidden mt-6 bg-purple-50 border-2 border-purple-200 rounded-xl p-6 shadow-lg">
+                <h3 class="text-xl font-bold text-purple-900 mb-1 flex items-center">
+                    <i class="fas fa-bolt mr-2 text-yellow-500"></i>Speed Analysis: Equal Time, Increasing Distance
+                    <span class="zh-text ml-2 text-base font-normal text-purple-700">速度分析：相同時間，距離增加</span>
+                </h3>
+                <p class="text-sm text-purple-700 mb-4">Each 0.5 s interval, the ball travels a <strong>longer</strong> distance — proof of acceleration due to gravity.
+                    <span class="zh-text block mt-1">每 0.5 秒，球走的距離越來越長 — 這證明了重力加速度的存在。</span>
+                </p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-purple-200 text-purple-900">
+                                <th class="p-3 text-left rounded-tl-lg">Interval <span class="zh-text">時段</span></th>
+                                <th class="p-3 text-center">Position at end <span class="zh-text">末位置</span></th>
+                                <th class="p-3 text-center">Distance in interval <span class="zh-text">區間距離</span></th>
+                                <th class="p-3 text-center rounded-tr-lg">Observation <span class="zh-text">觀察</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="analysis-table-body"></tbody>
+                    </table>
+                </div>
+                <div class="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded text-sm text-yellow-900">
+                    <strong><i class="fas fa-lightbulb mr-1"></i>Key Idea:</strong> Same time interval (0.5 s), but the distance keeps <strong>increasing</strong>. This means the ball is speeding up — it is <strong>accelerating</strong>.
+                    <span class="zh-text block mt-1"><strong>重點：</strong>相同的時間間隔（0.5 秒），但距離不斷增加。這表示球在加速。</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ── LANGUAGE ──
+        let isBilingual = false;
+        function toggleLanguage() {
+            isBilingual = !isBilingual;
+            document.body.classList.toggle('show-zh', isBilingual);
+            if (labSim.isInitialized) { labSim.drawGraphAxes(); labSim.drawGraphPoints(); }
+        }
+
+        // ── FREE FALL ──
+        const labSim = {
+            isInitialized: false,
+            scene: null, camera: null, renderer: null, ball: null,
+            state: 'holding', timeElapsed: 0, graphData: [], animationId: null,
+            g: 9.8, startHeight: 4, floorHeight: -8,
+
+            init: function () {
+                const container = document.getElementById('ff-canvas-container');
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x1e293b);
+                this.camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+                this.camera.position.set(0, -1.5, 20);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(container.clientWidth, container.clientHeight);
+                container.appendChild(this.renderer.domElement);
+                this.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+                const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(5, 10, 5); this.scene.add(dl);
+                // Sensor
+                const sensor = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 2), new THREE.MeshLambertMaterial({ color: 0x555555 }));
+                sensor.position.y = this.startHeight + 1.25; this.scene.add(sensor);
+                const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.6, 16), new THREE.MeshLambertMaterial({ color: 0x3b82f6 }));
+                lens.position.y = this.startHeight + 0.9; this.scene.add(lens);
+                // Ball
+                this.ball = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32), new THREE.MeshLambertMaterial({ color: 0xfcd34d }));
+                this.ball.position.y = this.startHeight; this.scene.add(this.ball);
+                // Floor
+                const grid = new THREE.GridHelper(20, 20, 0x475569, 0x334155); grid.position.y = this.floorHeight; this.scene.add(grid);
+                // Horizontal line markers
+                [[0x22d3ee, 0.5], [0xfb923c, 1.0], [0xa855f7, 1.5]].forEach(([col, t]) => {
+                    const d = 0.5 * this.g * t * t, y = this.startHeight - d;
+                    const pts = [new THREE.Vector3(-4, y, 0), new THREE.Vector3(4, y, 0)];
+                    this.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col, linewidth: 2 })));
+                });
+                // 2D canvas
+                this.canvas2d = document.getElementById('ff-graph2d');
+                this.ctx = this.canvas2d.getContext('2d');
+                this.setupCanvas2D();
+                this.isInitialized = true;
+                this.animate();
+                window.addEventListener('resize', () => this.resize());
+            },
+
+            setupCanvas2D: function () {
+                const p = this.canvas2d.parentElement;
+                this.canvas2d.width = p.clientWidth; this.canvas2d.height = p.clientHeight;
+                this.drawGraphAxes(); this.drawGraphPoints();
+            },
+
+            resize: function () {
+                if (!this.isInitialized) return;
+                const c = document.getElementById('ff-canvas-container');
+                this.camera.aspect = c.clientWidth / c.clientHeight; this.camera.updateProjectionMatrix();
+                this.renderer.setSize(c.clientWidth, c.clientHeight); this.setupCanvas2D();
+            },
+
+            holdBall:    function () { if (this.state === 'falling') this.state = 'paused'; },
+            resetBall:   function () { this.state = 'holding'; this.timeElapsed = 0; this.ball.position.y = this.startHeight; },
+            resetAll:    function () {
+                this.resetBall(); this.graphData = []; this.drawGraphAxes();
+                document.getElementById('analysis-trigger').classList.add('hidden');
+                document.getElementById('analysis-panel').classList.add('hidden');
+            },
+            releaseBall: function () {
+                if (this.state === 'holding') { this.state = 'falling'; this.timeElapsed = 0; this.graphData = []; }
+                else if (this.state === 'paused') { this.state = 'falling'; }
+            },
+
+            animate: function () {
+                this.animationId = requestAnimationFrame(() => this.animate());
+                if (this.state === 'falling') {
+                    this.timeElapsed += 0.015;
+                    const dd = 0.5 * this.g * this.timeElapsed * this.timeElapsed;
+                    this.ball.position.y = this.startHeight - dd;
+                    this.graphData.push({ t: this.timeElapsed, d: dd });
+                    this.drawGraphPoints();
+                    if (this.timeElapsed >= 1.5) { document.getElementById('analysis-trigger').classList.remove('hidden'); }
+                    if (this.ball.position.y <= this.floorHeight + 0.5) { this.ball.position.y = this.floorHeight + 0.5; this.state = 'landed'; }
+                }
+                this.renderer.render(this.scene, this.camera);
+            },
+
+            showAnalysis: function () {
+                const g = this.g;
+                // positions at end of each interval
+                const d0 = 0, d1 = 0.5 * g * 0.5 * 0.5, d2 = 0.5 * g * 1.0 * 1.0, d3 = 0.5 * g * 1.5 * 1.5;
+                const intervals = [
+                    { label: '0 → 0.5 s', color: '#22d3ee', bg: '#ecfeff', pos: d1, dist: d1 - d0 },
+                    { label: '0.5 → 1.0 s', color: '#fb923c', bg: '#fff7ed', pos: d2, dist: d2 - d1 },
+                    { label: '1.0 → 1.5 s', color: '#a855f7', bg: '#faf5ff', pos: d3, dist: d3 - d2 },
+                ];
+                const obs = ['Baseline', 'Longer! ↑', 'Even longer! ↑↑'];
+                const obsZh = ['基準', '更長！↑', '更更長！↑↑'];
+                const tbody = document.getElementById('analysis-table-body');
+                tbody.innerHTML = intervals.map((r, i) => `
+                    <tr style="background:${r.bg}; border-bottom:1px solid #e9d5ff">
+                        <td class="p-3 font-bold" style="color:${r.color}">${r.label}</td>
+                        <td class="p-3 text-center">${r.pos.toFixed(2)} m</td>
+                        <td class="p-3 text-center font-bold text-lg" style="color:${r.color}">${r.dist.toFixed(2)} m</td>
+                        <td class="p-3 text-center text-slate-700">${obs[i]} <span class="zh-text">${obsZh[i]}</span></td>
+                    </tr>`).join('');
+                document.getElementById('analysis-panel').classList.remove('hidden');
+                document.getElementById('analysis-trigger').classList.add('hidden');
+                setTimeout(() => document.getElementById('analysis-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            },
+
+            drawGraphAxes: function () {
+                const w = this.canvas2d.width, h = this.canvas2d.height, p = 50;
+                this.ctx.clearRect(0, 0, w, h);
+                this.ctx.beginPath(); this.ctx.strokeStyle = '#9ca3af'; this.ctx.lineWidth = 2;
+                this.ctx.moveTo(p, p); this.ctx.lineTo(p, h - p); this.ctx.lineTo(w - p, h - p); this.ctx.stroke();
+                this.ctx.strokeStyle = '#e5e7eb'; this.ctx.lineWidth = 1;
+                for (let i = 1; i < 6; i++) { const y = p + (h - 2 * p) * (i / 6); this.ctx.beginPath(); this.ctx.moveTo(p, y); this.ctx.lineTo(w - p, y); this.ctx.stroke(); }
+            },
+
+            drawGraphPoints: function () {
+                this.drawGraphAxes();
+                if (!this.graphData.length) return;
+                const w = this.canvas2d.width, h = this.canvas2d.height, pad = 50;
+                const gW = w - 2 * pad, gH = h - 2 * pad, maxT = 2.0, maxD = 20;
+                const lastT = this.graphData[this.graphData.length - 1].t;
+                const toX = t => pad + (t / maxT) * gW, toY = d => (h - pad) - (d / maxD) * gH;
+                // Crosshair markers
+                const marks = [0.5, 1.0, 1.5]; let prevD = 0;
+                for (const t of marks) {
+                    if (t > lastT + 0.02) break;
+                    const d = 0.5 * 9.8 * t * t, x = toX(t), y = toY(d), prevY = toY(prevD), dd = d - prevD;
+                    const mc = t === 0.5 ? '#22d3ee' : t === 1.0 ? '#fb923c' : '#a855f7';
+                    this.ctx.beginPath(); this.ctx.strokeStyle = mc; this.ctx.lineWidth = 1.5; this.ctx.setLineDash([6, 4]);
+                    this.ctx.moveTo(x, y); this.ctx.lineTo(x, h - pad); this.ctx.stroke();
+                    this.ctx.beginPath(); this.ctx.moveTo(pad, y); this.ctx.lineTo(x, y); this.ctx.stroke();
+                    this.ctx.setLineDash([]);
+                    this.ctx.fillStyle = mc; this.ctx.font = 'bold 12px sans-serif'; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'top';
+                    this.ctx.fillText(t + 's', x, h - pad + 6);
+                    this.ctx.textAlign = 'right'; this.ctx.textBaseline = 'middle'; this.ctx.fillText(d.toFixed(1) + 'm', pad - 4, y);
+                    const bx = x + 10; this.ctx.strokeStyle = mc; this.ctx.lineWidth = 2;
+                    this.ctx.beginPath(); this.ctx.moveTo(bx, y); this.ctx.lineTo(bx + 8, y); this.ctx.moveTo(bx + 8, y); this.ctx.lineTo(bx + 8, prevY); this.ctx.moveTo(bx + 8, prevY); this.ctx.lineTo(bx, prevY); this.ctx.stroke();
+                    this.ctx.fillStyle = mc; this.ctx.font = 'bold 11px sans-serif'; this.ctx.textAlign = 'left'; this.ctx.textBaseline = 'middle';
+                    this.ctx.fillText('Δd=' + dd.toFixed(2) + 'm', bx + 12, (y + prevY) / 2);
+                    prevD = d;
+                }
+                // Curve
+                this.ctx.beginPath(); this.ctx.strokeStyle = '#ef4444'; this.ctx.lineWidth = 4; this.ctx.lineCap = 'round'; this.ctx.lineJoin = 'round';
+                this.graphData.forEach((pt, i) => { const x = toX(pt.t), y = toY(pt.d); i === 0 ? this.ctx.moveTo(x, y) : this.ctx.lineTo(x, y); });
+                this.ctx.stroke();
+                // Dots
+                for (const t of marks) {
+                    if (t > lastT + 0.02) break;
+                    const d = 0.5 * 9.8 * t * t, mc = t === 0.5 ? '#22d3ee' : t === 1.0 ? '#fb923c' : '#a855f7';
+                    this.ctx.beginPath(); this.ctx.fillStyle = mc; this.ctx.arc(toX(t), toY(d), 6, 0, Math.PI * 2); this.ctx.fill();
+                    this.ctx.strokeStyle = '#fff'; this.ctx.lineWidth = 2; this.ctx.stroke();
+                }
+            }
+        };
+
+        window.onload = function () {
+            labSim.init();
+        };
+    </script>
+</body>
+</html>
